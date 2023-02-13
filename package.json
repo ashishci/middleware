@@ -1,29 +1,21 @@
 {
-  "name": "shared-middleware",
+  "name": "middleware",
   "version": "1.0.0",
-  "description": "custom middleware shared between projects ",
+  "description": "custom middleware shared between projects",
   "main": "src/main.ts",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ashishci/middleware.git"
-  },
-  "keywords": [
-    "ashish",
-    "chatterjee"
-  ],
-  "author": "ashish chatterjee",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/ashishci/middleware/issues"
-  },
-  "homepage": "https://github.com/ashishci/middleware#readme",
-  "dependencies": {
+  "repository": "https://github.com/ashishci/middleware",
+  "author": "Ash Chatterjee <ashish@ashishc.io>",
+  "license": "MIT",
+  "devDependencies": {
     "@types/node": "^18.13.0",
+    "@types/pg": "^8.6.6",
+    "cross-env": "^7.0.3",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "pg": "^8.9.0"
   }
 }
