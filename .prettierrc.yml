@@ -1,11 +1,5 @@
 semi: false
 singleQuote: true
 arrowParens: avoid
-trailingComma: none,
-overrides:
-  - files: 'docs/*.md'
-    options:
-      printWidth: 60
-  - files: '*.js'
-    options:
-      parser: flow
+trailingComma: none
+tabWidth: 2
