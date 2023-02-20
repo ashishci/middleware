@@ -19,6 +19,6 @@
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true
   },
-  "include": ["**/*.ts", "package.json"],
+  "include": ["src/**/*.ts", "package.json"],
   "exclude": ["node_modules", "**/*spec.ts"]
 }
