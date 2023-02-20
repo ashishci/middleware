@@ -10,12 +10,25 @@ This repository is for all shared middleware that can be consumed across project
     - param config
       - {host:string, port:number, password:string}
       - Optional: has a default config
-    - param serviceName
-      - string
+    - param serviceName: string
       - required
   - getCache
+    - param client:client
+      - required
+    - param key:string
+      - required
   - setCache
+    - param client:client
+      - required
+    - param key:string
+      - required
+    - param value:string
+      - required
   - removeCache
+    - param client:client
+      - required
+    - param key:string
+      - required
   - middleware
   - tests mocks using jest
 

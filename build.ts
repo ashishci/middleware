@@ -1,5 +1,7 @@
-import { join } from 'path';
-
+import { compilerOptions } from './tsconfig.json'
+import esbuild from 'esbuild'
+import { join } from 'path'
+import { nodeExternalsPlugin } from 'esbuild-node-externals'
 
 const DEFAULT_SOURCE_ENTRY_FILE = 'index.ts'
 const DEFAULT_DEST_ENTRY_FILE = 'index.js'
@@ -11,51 +13,55 @@ const BASE_DEST = join(process.cwd(), DEFAULT_DEST)
 
 const argv: string[] = process.argv
 
-type Command = {
+interface Command {
     source: string
     destination: string
-    platform: string
-    minify: string | null
-    bundle: string | null
+    platform: esbuild.Platform
+    minify: boolean
+    bundle: boolean
 }
 
 
 const createConfig = (args: string[] = argv, source: string = BASE_SOURCE
     , dest: string = BASE_DEST, defaultSourceEntryFile: string = DEFAULT_SOURCE_ENTRY_FILE
-    , defaultDestEntryFile = DEFAULT_DEST_ENTRY_FILE
 ): Command => {
 
     let _config: Command = {
         source: join(source, defaultSourceEntryFile),
-        destination: `outfile=${join(dest, defaultDestEntryFile)}`,
+        destination: join(dest),
         platform: 'node',
-        minify: null,
-        bundle: null
+        minify: false,
+        bundle: false
     }
 
-    type ObjectKey = keyof typeof _config
+
     const _flags = ['minify', 'bundle']
-    let _index: number, _arg: string, _value: string, _key: keyof Command
+    let _index: number, _arg: string, _value: string
 
 
     args.forEach((arg) => {
         if (arg.startsWith('--')) {
             _index = args.indexOf(arg)
-            _key = <ObjectKey>arg.replace('--', '')
             _value = args[_index + 1]
+            _arg = arg.replace('--', '')
 
-            if (_key.valueOf() === 'target') {
-                _config.source = join(source, _value, defaultSourceEntryFile)
-                _config.destination = `outfile=${join(dest, _value, defaultDestEntryFile)}`
+            if (_arg === 'target') {
+                _config.source = join(source, _value)
+                _config.destination = join(dest, _value)
             }
 
-            if (_key.valueOf() === 'platform') {
-                _config.platform = `${arg}=${_value}`
+            if (_arg === 'platform') {
+                _config.platform = <esbuild.Platform>_value
             }
 
-            if (_flags.includes(_key.valueOf())) {
-                _index = _flags.indexOf(_key.valueOf());
-                _config[_key] = arg
+            if (_flags.includes(_arg)) {
+                if (_arg === 'minify') {
+                    _config.minify = true
+                }
+
+                if (_arg === 'bundle') {
+                    _config.bundle = true
+                }
             }
         }
     })
@@ -63,9 +69,45 @@ const createConfig = (args: string[] = argv, source: string = BASE_SOURCE
 
 }
 
+const esmBuild = (config: Command, target: string, sourceMap: boolean) => {
+    const { destination, source, bundle, minify } = config
+    const _format = 'esm'
+    const _dest = join(destination, _format, DEFAULT_DEST_ENTRY_FILE)
+    esbuild.build({
+        entryPoints: [source],
+        outfile: _dest,
+        bundle: bundle,
+        sourcemap: sourceMap,
+        minify: minify,
+        format: _format,
+        define: { global: 'window' },
+        target: [target],
+        plugins: [nodeExternalsPlugin()]
+    }).catch(() => process.exit(1))
+}
+
+const standardBuild = (config: Command, sourceMap: boolean) => {
+    const { destination, source, bundle, minify, platform } = config
+    const _format = 'cjs'
+    const _dest = join(destination, _format, DEFAULT_DEST_ENTRY_FILE)
+    const _nodeVersion = process.version.replace('v', 'node')
+    esbuild.build({
+        entryPoints: [source],
+        outfile: _dest,
+        bundle: bundle,
+        sourcemap: sourceMap,
+        minify: minify,
+        platform: platform,
+        target: [_nodeVersion],
+        plugins: [nodeExternalsPlugin()]
+    }).catch(() => process.exit(1))
+}
+
 try {
+
     const config = createConfig()
-    console.log(config)
+    esmBuild(config, compilerOptions.target, compilerOptions.sourceMap)
+    standardBuild(config, compilerOptions.sourceMap)
 
 } catch (e) {
     throw e as Error
