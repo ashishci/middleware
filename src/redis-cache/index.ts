@@ -31,7 +31,7 @@ const defaultConfig: configType = {
  *
  * @param config
  * @param serviceName
- * @returns ClientTrimed | Error
+ * @returns ClientTrimed
  */
 export const client = (
   config: configType = defaultConfig,
@@ -70,7 +70,7 @@ export const client = (
  *
  * @param client
  * @param key
- * @returns Promise<string | Error | undefined>
+ * @returns Promise<string | Error | null>
  */
 export const getCache = async (client: ClientTrimed, key: string) => {
   if (!key || !client) {
@@ -87,6 +87,8 @@ export const getCache = async (client: ClientTrimed, key: string) => {
     if (cachedData) {
       return JSON.stringify(cachedData)
     }
+
+    return cachedData
   } catch (e) {
     console.log('Redis error while getting cache', (e as Error).message)
     throw e as Error
