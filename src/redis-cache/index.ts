@@ -1,7 +1,7 @@
+import { NextFunction as Next, Request, Response } from 'express'
+
 import config from './config'
 import { createClient } from 'redis'
-
-const SERVICE_NAME = 'redis-cache'
 
 const { host, port, password, ttl } = config
 
@@ -11,7 +11,8 @@ export type configType = {
   password: string
 }
 
-export interface ClientTrimed {
+
+export interface ClientLimited {
   connect: () => Promise<void>
   disconnect: () => Promise<void>
   del: (key: string) => Promise<Error | number>
@@ -20,6 +21,8 @@ export interface ClientTrimed {
   expire: (key: string, seconds: number) => Promise<boolean>
   on: (eventName: string, listener: (err: Error | undefined) => void) => {}
 }
+
+
 
 const defaultConfig: configType = {
   host: host,
@@ -33,10 +36,10 @@ const defaultConfig: configType = {
  * @param serviceName
  * @returns ClientTrimed
  */
-export const client = (
-  config: configType = defaultConfig,
-  serviceName: string = SERVICE_NAME
-): ClientTrimed => {
+export const cacheClient = (
+  serviceName: string,
+  config: configType = defaultConfig
+): ClientLimited => {
   const { host, port, password } = config
 
   const _client = createClient({
@@ -63,7 +66,10 @@ export const client = (
     )
   })
 
-  return _client as ClientTrimed
+
+
+
+  return _client as ClientLimited
 }
 
 /**
@@ -72,16 +78,14 @@ export const client = (
  * @param key
  * @returns Promise<string | Error | null>
  */
-export const getCache = async (client: ClientTrimed, key: string) => {
+export const getCache = async (client: ClientLimited, key: string) => {
   if (!key || !client) {
     return new Error('Invalid parameter value')
   }
 
   try {
     await client.connect()
-
     const cachedData = await client.get(key)
-
     await client.disconnect()
 
     if (cachedData) {
@@ -103,7 +107,7 @@ export const getCache = async (client: ClientTrimed, key: string) => {
  * @returns Promise<Error | undefined>
  */
 export const setCache = async (
-  client: ClientTrimed,
+  client: ClientLimited,
   key: string,
   value: string
 ) => {
@@ -114,10 +118,8 @@ export const setCache = async (
   try {
     await client.connect()
 
-    const result = await client
-      .set(key, JSON.stringify(value))
-      .then(() => client.expire(key, ttl))
-
+    const result = await client.set(key, JSON.stringify(value))
+    await client.expire(key, ttl)
     await client.disconnect()
 
     if (result) {
@@ -137,16 +139,14 @@ export const setCache = async (
  * @param key
  * @returns Promise<number | Error>
  */
-export const removeCache = async (client: ClientTrimed, key: string) => {
+export const removeCache = async (client: ClientLimited, key: string) => {
   if (!key || !client) {
     throw new Error('Invalid parameter value')
   }
 
   try {
     await client.connect()
-
     const result = await client.del(key)
-
     await client.disconnect()
 
     if (result) {
@@ -159,5 +159,24 @@ export const removeCache = async (client: ClientTrimed, key: string) => {
   } catch (e) {
     console.log('Redis error while getting cache', (e as Error).message)
     throw e as Error
+  }
+}
+
+export const cachedData = async (req: Request, res: Response, next: Next) => {
+
+  try {
+    const path = req.path.replaceAll('/', '-')
+    const { redis, name } = req.cacheClient
+    const key = `${name}${path}`
+
+    const data = await getCache(redis, key)
+
+    res.status(200).send({
+      fromCache: data ? true : false,
+      data: data
+    })
+
+  } catch (e) {
+    res.status(404).send({ error: (e as Error).message })
   }
 }

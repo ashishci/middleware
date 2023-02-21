@@ -1,6 +1,6 @@
 import * as redisCache from '..'
 
-import { ClientTrimed } from '..'
+import { ClientLimited } from '..'
 
 const redis = jest.requireActual<typeof redisCache>('..')
 
@@ -38,8 +38,9 @@ let removeCacheSpy: jest.SpyInstance
  * @returns ClientTrimed object
  */
 const clientImplmentation = (
+  serviceName: string,
   config: redisCache.configType = testConfig,
-  serviceName: string = SERVICE_NAME
+
 ) => {
   return {
     connect: jest.fn().mockImplementation(() => Promise.resolve()),
@@ -66,7 +67,7 @@ const clientImplmentation = (
  * @returns Promise<Error | undefined>
  */
 const setCacheImplementation = (
-  client: ClientTrimed,
+  client: ClientLimited,
   key: string,
   value: string
 ) => {
@@ -83,7 +84,7 @@ const setCacheImplementation = (
  * @param key
  * @returns Promise<Error | string>
  */
-const getCacheImplementation = (client: ClientTrimed, key: string) => {
+const getCacheImplementation = (client: ClientLimited, key: string) => {
   if (!client || !key) {
     return Promise.reject<Error>(ERROR_FOR_EMPTY_PARAMETER_VALUE)
   }
@@ -97,7 +98,7 @@ const getCacheImplementation = (client: ClientTrimed, key: string) => {
  * @param key
  * @returns Promise<Error | number>
  */
-const removeCacheImplementation = (client: ClientTrimed, key: string) => {
+const removeCacheImplementation = (client: ClientLimited, key: string) => {
   if (!client || !key) {
     return Promise.reject<Error>(ERROR_FOR_EMPTY_PARAMETER_VALUE)
   }
@@ -108,9 +109,9 @@ const removeCacheImplementation = (client: ClientTrimed, key: string) => {
 describe('testing redis cache', () => {
   beforeEach(() => {
     clientSpy = jest
-      .spyOn(redis, 'client')
-      .mockImplementation((config, serviceName) =>
-        clientImplmentation(config, serviceName)
+      .spyOn(redis, 'cacheClient')
+      .mockImplementation((serviceName, config) =>
+        clientImplmentation(serviceName, config)
       )
     setCacheSpy = jest
       .spyOn(redis, 'setCache')
@@ -128,7 +129,7 @@ describe('testing redis cache', () => {
   })
 
   test('test client creation with default params', () => {
-    const _client = redis.client()
+    const _client = redis.cacheClient(SERVICE_NAME)
 
     expect(clientSpy).toHaveBeenCalled()
     expect(clientSpy).toHaveBeenCalledWith()
@@ -136,7 +137,7 @@ describe('testing redis cache', () => {
   })
 
   test('test retrieve from cache', async () => {
-    const client = redis.client(testConfig, SERVICE_NAME)
+    const client = redis.cacheClient(SERVICE_NAME, testConfig)
 
     const data = await redis.getCache(client, key)
 
@@ -147,7 +148,7 @@ describe('testing redis cache', () => {
   })
 
   test('test retrieve from cache for empty key value', async () => {
-    const client = redis.client(testConfig, SERVICE_NAME)
+    const client = redis.cacheClient(SERVICE_NAME, testConfig)
 
     const expected = ERROR_FOR_EMPTY_PARAMETER_VALUE
     await redis.getCache(client, '').catch(err => {
@@ -159,7 +160,7 @@ describe('testing redis cache', () => {
   })
 
   test('test save data to cache', async () => {
-    const client = redis.client(testConfig, SERVICE_NAME)
+    const client = redis.cacheClient(SERVICE_NAME, testConfig)
 
     const data = await redis.setCache(client, key, JSON.stringify(keyValue))
 
@@ -174,7 +175,7 @@ describe('testing redis cache', () => {
   })
 
   test('test save data to cache for empty key value', async () => {
-    const client = redis.client(testConfig, SERVICE_NAME)
+    const client = redis.cacheClient(SERVICE_NAME, testConfig)
 
     const expected = ERROR_FOR_EMPTY_PARAMETER_VALUE
     await redis.setCache(client, '', JSON.stringify(keyValue)).catch(err => {
@@ -190,7 +191,7 @@ describe('testing redis cache', () => {
   })
 
   test('test save data to cache for empty value data', async () => {
-    const client = redis.client(testConfig, SERVICE_NAME)
+    const client = redis.cacheClient(SERVICE_NAME, testConfig)
 
     const expected = ERROR_FOR_EMPTY_PARAMETER_VALUE
     await redis.setCache(client, key, '').catch(err => {
@@ -202,7 +203,7 @@ describe('testing redis cache', () => {
   })
 
   test('test remove data from cache', async () => {
-    const client = redis.client(testConfig, SERVICE_NAME)
+    const client = redis.cacheClient(SERVICE_NAME, testConfig)
 
     const data = await redis.removeCache(client, key)
 
@@ -213,7 +214,7 @@ describe('testing redis cache', () => {
   })
 
   test('test remove data from cache for empty key value', async () => {
-    const client = redis.client(testConfig, SERVICE_NAME)
+    const client = redis.cacheClient(SERVICE_NAME, testConfig)
 
     const expected = ERROR_FOR_EMPTY_PARAMETER_VALUE
     await redis.removeCache(client, '').catch(err => {
