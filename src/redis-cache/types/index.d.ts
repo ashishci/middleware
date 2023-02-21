@@ -1,13 +1,13 @@
-import { RedisCacheClient } from ".."
+import { RedisCacheClient } from '..'
 
-export { }
+export {}
 declare global {
-    namespace Express {
-        interface Request {
-            cacheClient: {
-                redis: RedisCacheClient,
-                name: string
-            }
-        }
+  namespace Express {
+    interface Request {
+      cacheClient: {
+        redis: RedisCacheClient
+        name: string
+      }
     }
+  }
 }

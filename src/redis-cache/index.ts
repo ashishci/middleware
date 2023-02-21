@@ -5,12 +5,13 @@ import { createClient } from 'redis'
 
 const { host, port, password, ttl } = config
 
+const SERVICE_NAME = 'redis-cache-client'
+
 export type configType = {
   host: string
   port: number
   password: string
 }
-
 
 export interface ClientLimited {
   connect: () => Promise<void>
@@ -21,8 +22,6 @@ export interface ClientLimited {
   expire: (key: string, seconds: number) => Promise<boolean>
   on: (eventName: string, listener: (err: Error | undefined) => void) => {}
 }
-
-
 
 const defaultConfig: configType = {
   host: host,
@@ -37,7 +36,7 @@ const defaultConfig: configType = {
  * @returns ClientTrimed
  */
 export const cacheClient = (
-  serviceName: string,
+  serviceName: string = SERVICE_NAME,
   config: configType = defaultConfig
 ): ClientLimited => {
   const { host, port, password } = config
@@ -65,9 +64,6 @@ export const cacheClient = (
       `disconnected from redis at ${host}:${port} for service: ${serviceName}`
     )
   })
-
-
-
 
   return _client as ClientLimited
 }
@@ -163,7 +159,6 @@ export const removeCache = async (client: ClientLimited, key: string) => {
 }
 
 export const cachedData = async (req: Request, res: Response, next: Next) => {
-
   try {
     const path = req.path.replaceAll('/', '-')
     const { redis, name } = req.cacheClient
@@ -175,7 +170,6 @@ export const cachedData = async (req: Request, res: Response, next: Next) => {
       fromCache: data ? true : false,
       data: data
     })
-
   } catch (e) {
     res.status(404).send({ error: (e as Error).message })
   }

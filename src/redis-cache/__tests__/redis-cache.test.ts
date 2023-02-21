@@ -38,9 +38,8 @@ let removeCacheSpy: jest.SpyInstance
  * @returns ClientTrimed object
  */
 const clientImplmentation = (
-  serviceName: string,
-  config: redisCache.configType = testConfig,
-
+  serviceName: string = SERVICE_NAME,
+  config: redisCache.configType = testConfig
 ) => {
   return {
     connect: jest.fn().mockImplementation(() => Promise.resolve()),
@@ -129,7 +128,7 @@ describe('testing redis cache', () => {
   })
 
   test('test client creation with default params', () => {
-    const _client = redis.cacheClient(SERVICE_NAME)
+    const _client = redis.cacheClient()
 
     expect(clientSpy).toHaveBeenCalled()
     expect(clientSpy).toHaveBeenCalledWith()
