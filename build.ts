@@ -21,7 +21,14 @@ interface Command {
     bundle: boolean
 }
 
-
+/**
+ * 
+ * @param args
+ * @param source 
+ * @param dest 
+ * @param defaultSourceEntryFile 
+ * @returns config object with the args passed in package.json
+ */
 const createConfig = (args: string[] = argv, source: string = BASE_SOURCE
     , dest: string = BASE_DEST, defaultSourceEntryFile: string = DEFAULT_SOURCE_ENTRY_FILE
 ): Command => {
@@ -69,13 +76,19 @@ const createConfig = (args: string[] = argv, source: string = BASE_SOURCE
 
 }
 
+/**
+ * ESM bundler
+ * @param config 
+ * @param target 
+ * @param sourceMap 
+ */
 const esmBuild = (config: Command, target: string, sourceMap: boolean) => {
     const { destination, source, bundle, minify } = config
     const _format = 'esm'
-    const _dest = join(destination, _format, DEFAULT_DEST_ENTRY_FILE)
+    const _dest = join(destination, _format)
     esbuild.build({
         entryPoints: [source],
-        outfile: _dest,
+        outdir: _dest,
         bundle: bundle,
         sourcemap: sourceMap,
         minify: minify,
@@ -86,6 +99,11 @@ const esmBuild = (config: Command, target: string, sourceMap: boolean) => {
     }).catch(() => process.exit(1))
 }
 
+/**
+ * CJS bundler based platform
+ * @param config
+ * @param sourceMap 
+ */
 const standardBuild = (config: Command, sourceMap: boolean) => {
     const { destination, source, bundle, minify, platform } = config
     const _format = 'cjs'
