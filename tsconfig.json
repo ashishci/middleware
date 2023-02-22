@@ -9,7 +9,6 @@
     "types": ["node", "jest"],
     "resolveJsonModule": true,
     "allowJs": true,
-    "sourceMap": true,
     "outDir": "./dist",
     "isolatedModules": true,
     "allowSyntheticDefaultImports": true,
@@ -17,7 +16,8 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "noFallthroughCasesInSwitch": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "strictNullChecks": false
   },
   "include": ["src/**/*.ts", "package.json"],
   "exclude": ["node_modules", "**/*spec.ts"]

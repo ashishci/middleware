@@ -165,12 +165,15 @@ export const cachedData = async (req: Request, res: Response, next: Next) => {
     const key = `${name}${path}`
 
     const data = await getCache(redis, key)
-
-    res.status(200).send({
-      fromCache: data ? true : false,
-      data: data
-    })
+    if (data) {
+      return res.status(200).json({
+        fromCache: true,
+        data: data
+      })
+    } else {
+      next()
+    }
   } catch (e) {
-    res.status(404).send({ error: (e as Error).message })
+    return res.status(404).json({ error: (e as Error).message })
   }
 }

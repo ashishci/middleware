@@ -41,10 +41,8 @@ const createConfig = (args: string[] = argv, source: string = BASE_SOURCE
         bundle: false
     }
 
-
     const _flags = ['minify', 'bundle']
     let _index: number, _arg: string, _value: string
-
 
     args.forEach((arg) => {
         if (arg.startsWith('--')) {
