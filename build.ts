@@ -71,7 +71,6 @@ const createConfig = (args: string[] = argv, source: string = BASE_SOURCE
         }
     })
     return _config
-
 }
 
 /**

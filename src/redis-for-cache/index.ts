@@ -1,4 +1,4 @@
-import { NextFunction as Next, Request, Response } from 'express'
+import { NextFunction, Request, Response } from 'express'
 
 import config from './config'
 import { createClient } from 'redis'
@@ -7,13 +7,13 @@ const { host, port, password, ttl } = config
 
 const SERVICE_NAME = 'redis-cache-client'
 
-export type configType = {
+export type ConfigType = {
   host: string
   port: number
   password: string
 }
 
-export interface ClientLimited {
+export interface ClientPartial {
   connect: () => Promise<void>
   disconnect: () => Promise<void>
   del: (key: string) => Promise<Error | number>
@@ -23,7 +23,7 @@ export interface ClientLimited {
   on: (eventName: string, listener: (err: Error | undefined) => void) => {}
 }
 
-const defaultConfig: configType = {
+const defaultConfig: ConfigType = {
   host: host,
   port: port,
   password: password
@@ -37,8 +37,8 @@ const defaultConfig: configType = {
  */
 export const cacheClient = (
   serviceName: string = SERVICE_NAME,
-  config: configType = defaultConfig
-): ClientLimited => {
+  config: ConfigType = defaultConfig
+): ClientPartial => {
   const { host, port, password } = config
 
   const _client = createClient({
@@ -65,7 +65,7 @@ export const cacheClient = (
     )
   })
 
-  return _client as ClientLimited
+  return _client as ClientPartial
 }
 
 /**
@@ -74,7 +74,7 @@ export const cacheClient = (
  * @param key
  * @returns Promise<string | Error | null>
  */
-export const getCache = async (client: ClientLimited, key: string) => {
+export const getCache = async (client: ClientPartial, key: string) => {
   if (!key || !client) {
     return new Error('Invalid parameter value')
   }
@@ -103,7 +103,7 @@ export const getCache = async (client: ClientLimited, key: string) => {
  * @returns Promise<Error | undefined>
  */
 export const setCache = async (
-  client: ClientLimited,
+  client: ClientPartial,
   key: string,
   value: string
 ) => {
@@ -135,7 +135,7 @@ export const setCache = async (
  * @param key
  * @returns Promise<number | Error>
  */
-export const removeCache = async (client: ClientLimited, key: string) => {
+export const removeCache = async (client: ClientPartial, key: string) => {
   if (!key || !client) {
     throw new Error('Invalid parameter value')
   }
@@ -158,7 +158,11 @@ export const removeCache = async (client: ClientLimited, key: string) => {
   }
 }
 
-export const cachedData = async (req: Request, res: Response, next: Next) => {
+export const cachedData = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const path = req.path.replaceAll('/', '-')
     const { redis, name } = req.cacheClient

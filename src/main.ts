@@ -1,11 +1,11 @@
 import express, { NextFunction, Request, Response } from 'express'
 
-import { cacheClient } from './redis-cache'
+import { cacheClient } from './redis-for-cache'
 
 const HOST = '0.0.0.0'
 const PORT = 8080
 
-const redisCache = (req: Request, res: Response, next: NextFunction) => {
+const redisForCache = (req: Request, res: Response, next: NextFunction) => {
   const redisClient = {
     redis: cacheClient(),
     name: 'middleware'
@@ -14,7 +14,7 @@ const redisCache = (req: Request, res: Response, next: NextFunction) => {
 }
 
 const app = express()
-app.use(redisCache)
+app.use(redisForCache)
 
 app.get('/', (req, res) => {
   res.status(200).json({ data: 'I am alive' })

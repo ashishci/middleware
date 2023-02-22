@@ -1,9 +1,9 @@
-import * as redisCache from '..'
+import * as redisForCache from '..'
 
-import { ClientLimited, configType } from '..'
+import { ClientPartial, ConfigType } from '..'
 import { NextFunction, Request, Response } from 'express'
 
-const redis = jest.requireActual<typeof redisCache>('..')
+const redis = jest.requireActual<typeof redisForCache>('..')
 
 /**
  * CONSTANTS
@@ -24,7 +24,7 @@ export const TEST_CONFIG = {
 }
 
 /**
- * Spy instances to watch call to redisCache mocks
+ * Spy instances to watch call to redis-for-cache mocks
  */
 let clientSpy: jest.SpyInstance
 let getCacheSpy: jest.SpyInstance
@@ -82,7 +82,7 @@ let mockNext: NextFunction = jest.fn()
  */
 const clientImplmentation = (
   serviceName: string = SERVICE_NAME,
-  config: configType = TEST_CONFIG
+  config: ConfigType = TEST_CONFIG
 ) => {
   return {
     connect: jest.fn().mockImplementation(() => Promise.resolve()),
@@ -110,7 +110,7 @@ const clientImplmentation = (
  * @returns Promise<Error | undefined>
  */
 const setCacheImplementation = (
-  client: ClientLimited,
+  client: ClientPartial,
   key: string,
   value: string
 ) => {
@@ -127,7 +127,7 @@ const setCacheImplementation = (
  * @param key
  * @returns Promise<Error | string>
  */
-const getCacheImplementation = async (client: ClientLimited, key: string) => {
+const getCacheImplementation = async (client: ClientPartial, key: string) => {
   if (!client || !key) {
     return Promise.reject<Error>(ERROR_FOR_EMPTY_PARAMETER_VALUE)
   }
@@ -141,7 +141,7 @@ const getCacheImplementation = async (client: ClientLimited, key: string) => {
  * @param key
  * @returns Promise<Error | number>
  */
-const removeCacheImplementation = (client: ClientLimited, key: string) => {
+const removeCacheImplementation = (client: ClientPartial, key: string) => {
   if (!client || !key) {
     return Promise.reject<Error>(ERROR_FOR_EMPTY_PARAMETER_VALUE)
   }
