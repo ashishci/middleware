@@ -6,11 +6,7 @@ declare global {
     export interface Request {
       redisClient: RedisClient
       logger: Logger
-      data: string
     }
 
-    export interface Response {
-      logger: Logger
-    }
   }
 }
