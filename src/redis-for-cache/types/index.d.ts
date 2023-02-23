@@ -1,13 +1,16 @@
-import { ClientPartial } from '..'
+import { RedisClient } from '..'
+import { Logger } from 'pino'
 
-export {}
 declare global {
   namespace Express {
-    interface Request {
-      cacheClient: {
-        redis: ClientPartial
-        name: string
-      }
+    export interface Request {
+      redisClient: RedisClient
+      logger: Logger
+      data: string
+    }
+
+    export interface Response {
+      logger: Logger
     }
   }
 }
