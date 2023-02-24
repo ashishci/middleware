@@ -7,4 +7,3 @@ node_modules/
 
 # build / generate output
 /dist
-/built

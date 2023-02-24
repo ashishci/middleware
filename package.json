@@ -12,10 +12,9 @@
     "lint:fix": "eslint --ignore-path .eslintignore --ext \"src/*.ts\" --fix",
     "format": "prettier --ignore-path .gitignore --write \"src/**/*.+(js|ts|json)\"",
     "lint:format": "yarn lint && yarn format",
-    "start": "ts-node --files src/main.ts",
+    "start": "ts-node src/main.ts",
     "redis:dev": "cross-env NODE_ENV=development ts-node-dev src/redis-for-cache/index.ts",
     "test": "yarn lint:format && jest",
-    "build": "yarn lint:format && tsc -p tsconfig.json",
     "build:redis-for-cache": "yarn lint:format && ts-node  build.ts --target redis-for-cache --platform node --bundle --minify"
   },
   "devDependencies": {

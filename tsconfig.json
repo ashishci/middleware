@@ -18,10 +18,8 @@
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
     "strictNullChecks": true,
-    "sourceMap": true,
-    "typeRoots": ["./node_modules/@types", "src/redis-for-cache/types"]
+    "sourceMap": true
   },
   "include": ["src/**/*.ts", "package.json"],
-  "exclude": ["node_modules", "src/**/*spec.ts", "**/*test.ts"],
-  "files": ["src/redis-for-cache/types/index.d.ts"]
+  "exclude": ["node_modules", "**/*spec.ts"]
 }
