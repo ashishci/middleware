@@ -184,10 +184,10 @@ export const writeToCache = async (
 
 /**
  * retrieve cahed data as response is exists
- * @param req 
- * @param res 
- * @param next 
- * @returns 
+ * @param req
+ * @param res
+ * @param next
+ * @returns
  */
 export const getCachedData = async (
   req: Request,
@@ -213,10 +213,10 @@ export const getCachedData = async (
 }
 /**
  * remove store data by key
- * @param req 
- * @param res 
- * @param next 
- * @returns 
+ * @param req
+ * @param res
+ * @param next
+ * @returns
  */
 export const removeCachedData = async (
   req: Request,

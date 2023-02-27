@@ -1,4 +1,9 @@
-import { getCachedData, redisForCache, removeCachedData, writeToCache } from './redis-for-cache'
+import {
+  getCachedData,
+  redisForCache,
+  removeCachedData,
+  writeToCache
+} from './redis-for-cache'
 
 import express from 'express'
 
@@ -12,7 +17,7 @@ app.get('/', (req, res) => {
   res.status(200).json({ data: 'I am alive' })
 })
 
-app.post('/', (req, res) => {
+app.post('/test', (req, res) => {
   const data = {
     id: 1,
     value: 'some value'
@@ -31,7 +36,6 @@ app.get('/test/:id', getCachedData, (req, res) => {
   }
   res.status(200).json(response)
 })
-
 
 app.delete('/test/:id', removeCachedData, (req, res) => {
   res.status(200).json()
