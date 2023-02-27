@@ -18,7 +18,8 @@
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
     "strictNullChecks": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "composite": true
   },
   "include": ["src/**/*.ts", "package.json"],
   "exclude": ["node_modules", "**/*spec.ts"]

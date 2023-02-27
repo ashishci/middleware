@@ -8,11 +8,12 @@ const redis = jest.requireActual<typeof redisForCache>('..')
 /**
  * CONSTANTS
  */
-export const SERVICE_NAME = 'test-redis-cache'
-export const ERROR_FOR_EMPTY_PARAMETER_VALUE = 'Invalid parameter value'
-export const REQUEST_PATH = '/test/100'
-export const KEY = 'test-key'
-export const KEY_VALUE = {
+const SERVICE_NAME = 'test-redis-cache'
+const ERROR_FOR_EMPTY_PARAMETER_VALUE = 'Invalid parameter value'
+const REQUEST_PATH = '/key'
+const KEY = 'test-redis-cache-key'
+const TTL = 60
+const KEY_VALUE = {
   id: 1,
   name: 'test-data'
 }
@@ -26,32 +27,31 @@ export const TEST_CONFIG = {
 /**
  * Spy instances to watch call to redis-for-cache mocks
  */
-let clientSpy: jest.SpyInstance
-let getCacheSpy: jest.SpyInstance
-let setCacheSpy: jest.SpyInstance
-let removeCacheSpy: jest.SpyInstance
-let cachedDataSpy: jest.SpyInstance
-let emptyCacheDataSpy: jest.SpyInstance
+let redisForCacheSpy: jest.SpyInstance
+let writeToCacheSpy: jest.SpyInstance
+let getCachedDataSpy: jest.SpyInstance
+let getCachedDataReturnEmptySpy: jest.SpyInstance
+let removeCachedDataSpy: jest.SpyInstance
 
 /**
  * Objects holds the json result
  */
-let responseResult = {}
+let resJson = {}
 
 /**
- * MOCK IMPLEMENTATIONS
+ * MOCKS
  */
 
 /**
  * Request MOCK
  * @returns Partial<Request>
  */
-let mockRequest = () => {
+let requestMock = () => {
   const req = {} as Partial<Request>
   req.path = REQUEST_PATH
-  req.cacheClient = {
-    redis: clientImplmentation(),
-    name: SERVICE_NAME
+  req.redisClient = {
+    name: SERVICE_NAME,
+    redis: clientMock()
   }
   return req
 }
@@ -60,27 +60,25 @@ let mockRequest = () => {
  * Response MOCK
  * @returns Partial<Response>
  */
-let mockResponse = () => {
+let responseMock = () => {
   const res = {} as Partial<Response>
   res.json = jest.fn().mockImplementation(result => {
-    responseResult = result
+    resJson = result
   })
+  res.status = jest.fn().mockImplementation(() => res)
+
   return res
 }
 /**
  * NextFunction MOCK
  */
-let mockNext: NextFunction = jest.fn()
-
-/**
- * MOCK IMPLEMENTATIONS
- */
+let nextMock: NextFunction = jest.fn()
 
 /**
  *
  * @returns ClientTrimed object
  */
-const clientImplmentation = (
+const clientMock = (
   serviceName: string = SERVICE_NAME,
   config: ConfigType = TEST_CONFIG
 ) => {
@@ -91,11 +89,7 @@ const clientImplmentation = (
     del: jest
       .fn()
       .mockImplementation(key => Promise.resolve<Error | number>(1)),
-    get: jest
-      .fn()
-      .mockImplementation(key =>
-        Promise.resolve<string | null>(JSON.stringify(KEY_VALUE))
-      ),
+    get: jest.fn().mockImplementation(key => Promise.resolve(KEY_VALUE)),
     set: jest.fn().mockImplementation((key, value) => Promise.resolve()),
     expire: jest.fn().mockImplementation((key, second) => Promise.resolve()),
     on: jest.fn()
@@ -103,22 +97,63 @@ const clientImplmentation = (
 }
 
 /**
+ * generates key used to store, retrieve and delete cached data
+ * @param name
+ * @param path
+ * @returns stering
+ */
+const generateKeyMock = (name: string, path: string) => KEY
+
+/**
  *
  * @param client
- * @param key
+ * @param name
+ * @param path
  * @param value
  * @returns Promise<Error | undefined>
  */
-const setCacheImplementation = (
+const writeToCacheMock = async (
   client: ClientPartial,
-  key: string,
+  name: string,
+  path: string,
   value: string
 ) => {
-  if (!client || !key || !value) {
+  if (!client || !name || !path || !value) {
     return Promise.reject<Error>(ERROR_FOR_EMPTY_PARAMETER_VALUE)
   }
 
+  const key = generateKeyMock(name, path)
+  await client.connect()
+  await client.set(key, value)
+  await client.expire(key, TTL)
+  await client.disconnect()
+
   return Promise.resolve(undefined)
+}
+
+/**
+ * redis-for-cache middleware
+ * @param serviceName
+ * @param config
+ * @returns function
+ */
+const redisForCacheMock = (serviceName: string, config?: ConfigType) => {
+  const result = jest
+    .fn()
+    .mockImplementation((req: Request, res: Response, next: NextFunction) => {
+      if (!req.redisClient) {
+        req.redisClient = {
+          name: serviceName,
+          redis: config
+            ? clientMock(serviceName, config)
+            : clientMock(serviceName)
+        }
+      }
+
+      next()
+    })
+
+  return result
 }
 
 /**
@@ -127,12 +162,16 @@ const setCacheImplementation = (
  * @param key
  * @returns Promise<Error | string>
  */
-const getCacheImplementation = async (client: ClientPartial, key: string) => {
+const getCacheMock = async (client: ClientPartial, key: string) => {
   if (!client || !key) {
     return Promise.reject<Error>(ERROR_FOR_EMPTY_PARAMETER_VALUE)
   }
 
-  return Promise.resolve(JSON.stringify(KEY_VALUE))
+  await client.connect()
+  const data = await client.get(key)
+  await client.disconnect()
+
+  return Promise.resolve(JSON.stringify(data))
 }
 
 /**
@@ -141,10 +180,14 @@ const getCacheImplementation = async (client: ClientPartial, key: string) => {
  * @param key
  * @returns Promise<Error | number>
  */
-const removeCacheImplementation = (client: ClientPartial, key: string) => {
+const removeFromCacheMock = async (client: ClientPartial, key: string) => {
   if (!client || !key) {
     return Promise.reject<Error>(ERROR_FOR_EMPTY_PARAMETER_VALUE)
   }
+
+  await client.connect()
+  await client.del(key)
+  await client.disconnect()
 
   return Promise.resolve<number>(1)
 }
@@ -156,24 +199,50 @@ const removeCacheImplementation = (client: ClientPartial, key: string) => {
  * @param next
  * @returns
  */
-const cachedDataImplementation = async (
+const getCachedDataMock = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const path = req.path.replaceAll('/', '-')
-    const { redis, name } = req.cacheClient
-    const key = `${name}${path}`
+    const path = req.path
+    const { redis, name } = req.redisClient
+    const key = generateKeyMock(name, path)
 
-    const data = await getCacheImplementation(redis, key)
+    const data = await getCacheMock(redis, key)
     if (data) {
-      return res.json({ fromCache: true, data: data })
+      return res.status(200).json({ fromCache: true, data: data })
     } else {
       next()
     }
   } catch (e) {
-    return res.json({
+    return res.status(400).json({
+      error: (e as Error).message
+    })
+  }
+}
+/**
+ * Remove cached data
+ * @param req
+ * @param res
+ * @param next
+ * @returns
+ */
+const removeCachedDataMock = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const path = req.path
+    const { redis, name } = req.redisClient
+    const key = generateKeyMock(name, path)
+
+    await removeFromCacheMock(redis, key)
+
+    next()
+  } catch (e) {
+    return res.status(400).json({
       error: (e as Error).message
     })
   }
@@ -186,7 +255,7 @@ const cachedDataImplementation = async (
  * @param next
  * @returns
  */
-const emptyCachedDataImplementation = async (
+const getCachedDataReturnEmptyMock = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -194,173 +263,115 @@ const emptyCachedDataImplementation = async (
   try {
     let data: string | undefined
     if (data) {
-      return res.json(JSON.stringify({ fromCache: true, data: data }))
+      return res
+        .status(200)
+        .json(JSON.stringify({ fromCache: true, data: data }))
     } else {
       next()
     }
   } catch (e) {
-    return res.json({
+    return res.status(400).json({
       error: (e as Error).message
     })
   }
 }
 
-describe('testing redis cache', () => {
+describe('redis-for-cache middleware testing', () => {
   beforeEach(() => {
-    clientSpy = jest
-      .spyOn(redis, 'cacheClient')
+    jest.resetAllMocks()
+
+    writeToCacheSpy = jest
+      .spyOn(redis, 'writeToCache')
+      .mockImplementation((client, name, path, value) =>
+        writeToCacheMock(client, name, path, value)
+      )
+    redisForCacheSpy = jest
+      .spyOn(redis, 'redisForCache')
       .mockImplementation((serviceName, config) =>
-        clientImplmentation(serviceName, config)
+        redisForCacheMock(serviceName, config)
       )
-    setCacheSpy = jest
-      .spyOn(redis, 'setCache')
-      .mockImplementation((client, key, value) =>
-        setCacheImplementation(client, key, value)
-      )
-    getCacheSpy = jest
-      .spyOn(redis, 'getCache')
-      .mockImplementation((client, key) => getCacheImplementation(client, key))
-
-    removeCacheSpy = jest
-      .spyOn(redis, 'removeCache')
-      .mockImplementation((client, key) =>
-        removeCacheImplementation(client, key)
-      )
-    emptyCacheDataSpy = jest
-      .spyOn(redis, 'cachedData')
+    getCachedDataSpy = jest
+      .spyOn(redis, 'getCachedData')
+      .mockImplementation((req, res, next) => getCachedDataMock(req, res, next))
+    removeCachedDataSpy = jest
+      .spyOn(redis, 'removeCachedData')
       .mockImplementation((req, res, next) =>
-        emptyCachedDataImplementation(req, res, next)
+        removeCachedDataMock(req, res, next)
       )
   })
 
-  test('test client creation with default params', () => {
-    const _client = redis.cacheClient()
+  test('test redisforcache creation returns a function type', () => {
+    const result = redis.redisForCache(SERVICE_NAME, TEST_CONFIG)
 
-    expect(clientSpy).toHaveBeenCalled()
-    expect(clientSpy).toHaveBeenCalledWith()
-    expect(_client).not.toBeNull()
+    expect(redisForCacheSpy).toHaveBeenCalled()
+    expect(redisForCacheSpy).toHaveBeenCalledWith(SERVICE_NAME, TEST_CONFIG)
+    expect(typeof result).toBe('function')
   })
 
-  test('test save data to cache', async () => {
-    const client = redis.cacheClient(SERVICE_NAME, TEST_CONFIG)
+  test('test getCachedData respose is retiurned  when data is found', async () => {
+    const req = requestMock() as Request
+    const res = responseMock() as Response
+    const next = nextMock
 
-    const data = await redis.setCache(client, KEY, JSON.stringify(KEY_VALUE))
-
-    expect(setCacheSpy).toHaveBeenCalled()
-    expect(setCacheSpy).toHaveBeenCalledTimes(1)
-    expect(setCacheSpy).toHaveBeenCalledWith(
-      client,
-      KEY,
-      JSON.stringify(KEY_VALUE)
-    )
-    expect(data).toBeUndefined()
-  })
-
-  test('test save data to cache for empty key value to reject', async () => {
-    const client = redis.cacheClient(SERVICE_NAME, TEST_CONFIG)
-
-    const expected = ERROR_FOR_EMPTY_PARAMETER_VALUE
-
-    await redis.setCache(client, '', JSON.stringify(KEY_VALUE)).catch(err => {
-      expect(err).toMatch(expected)
-    })
-
-    expect(setCacheSpy).toHaveBeenCalled()
-    expect(setCacheSpy).toHaveBeenCalledWith(
-      client,
-      '',
-      JSON.stringify(KEY_VALUE)
-    )
-  })
-
-  test('test save data to cache for empty value data is rejected', async () => {
-    const client = redis.cacheClient(SERVICE_NAME, TEST_CONFIG)
-
-    const expected = ERROR_FOR_EMPTY_PARAMETER_VALUE
-    await redis.setCache(client, KEY, '').catch(err => {
-      expect(err).toBe(expected)
-    })
-
-    expect(setCacheSpy).toHaveBeenCalled()
-    expect(setCacheSpy).toHaveBeenCalledWith(client, KEY, '')
-  })
-
-  test('test retrieve from cache', async () => {
-    const client = redis.cacheClient(SERVICE_NAME, TEST_CONFIG)
-
-    const data = await redis.getCache(client, KEY)
-
-    expect(getCacheSpy).toHaveBeenCalled()
-    expect(getCacheSpy).toHaveBeenCalledTimes(1)
-    expect(getCacheSpy).toHaveBeenCalledWith(client, KEY)
-    expect(data).toEqual(JSON.stringify(KEY_VALUE))
-  })
-
-  test('test retrieve from cache for empty key value is rejected', async () => {
-    const client = redis.cacheClient(SERVICE_NAME, TEST_CONFIG)
-
-    const expected = ERROR_FOR_EMPTY_PARAMETER_VALUE
-    await redis.getCache(client, '').catch(err => {
-      expect(err).toBe(expected)
-    })
-
-    expect(getCacheSpy).toHaveBeenCalled()
-    expect(getCacheSpy).toHaveBeenCalledWith(client, '')
-  })
-
-  test('test remove data from cache', async () => {
-    const client = redis.cacheClient(SERVICE_NAME, TEST_CONFIG)
-
-    const data = await redis.removeCache(client, KEY)
-
-    expect(removeCacheSpy).toHaveBeenCalled()
-    expect(removeCacheSpy).toHaveBeenCalledTimes(1)
-    expect(removeCacheSpy).toHaveBeenCalledWith(client, KEY)
-    expect(data).toBe(1)
-  })
-
-  test('test remove data from cache for empty key value is rejected', async () => {
-    const client = redis.cacheClient(SERVICE_NAME, TEST_CONFIG)
-
-    const expected = ERROR_FOR_EMPTY_PARAMETER_VALUE
-    await redis.removeCache(client, '').catch(err => {
-      expect(err).toBe(expected)
-    })
-
-    expect(removeCacheSpy).toHaveBeenCalled()
-    expect(removeCacheSpy).toHaveBeenCalledWith(client, '')
-  })
-
-  test('test cacheData next is called', async () => {
-    await redis.cachedData(
-      mockRequest() as Request,
-      mockResponse() as Response,
-      mockNext
-    )
-
-    expect(emptyCacheDataSpy).toHaveBeenCalled()
-    expect(mockNext).toHaveBeenCalledTimes(1)
-  })
-
-  test('test cacheData to return data from cache', async () => {
-    cachedDataSpy = jest
-      .spyOn(redis, 'cachedData')
-      .mockImplementation((req, res, next) =>
-        cachedDataImplementation(req, res, next)
-      )
-
-    await redis.cachedData(
-      mockRequest() as Request,
-      mockResponse() as Response,
-      mockNext
-    )
+    await redis.getCachedData(req, res, next)
 
     const expected = {
       fromCache: true,
       data: JSON.stringify(KEY_VALUE)
     }
 
-    expect(cachedDataSpy).toHaveBeenCalled()
-    expect(responseResult).toEqual(expected)
+    expect(getCachedDataSpy).toHaveBeenCalled()
+    expect(getCachedDataSpy).toHaveBeenCalledWith(req, res, next)
+    expect(resJson).toEqual(expected)
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(next).not.toHaveBeenCalled()
+  })
+
+  test('test next is called for getCacheData with empty data', async () => {
+    getCachedDataReturnEmptySpy = jest
+      .spyOn(redis, 'getCachedData')
+      .mockImplementation((req, res, next) =>
+        getCachedDataReturnEmptyMock(req, res, next)
+      )
+
+    const req = requestMock() as Request
+    const res = responseMock() as Response
+    const next = nextMock
+
+    await redis.getCachedData(req, res, next)
+
+    expect(getCachedDataReturnEmptySpy).toHaveBeenCalled()
+    expect(getCachedDataReturnEmptySpy).toHaveBeenCalledWith(req, res, next)
+    expect(next).toHaveBeenCalled()
+  })
+
+  test('test next is called after cahed data for key is removed for removeCachedData', async () => {
+    const req = requestMock() as Request
+    const res = responseMock() as Response
+    const next = nextMock
+
+    await redis.removeCachedData(req, res, next)
+
+    expect(removeCachedDataSpy).toHaveBeenCalled()
+    expect(removeCachedDataSpy).toHaveBeenCalledWith(req, res, next)
+    expect(next).toHaveBeenCalled()
+  })
+
+  test('test storing data to redis cache', async () => {
+    const client = clientMock(SERVICE_NAME, TEST_CONFIG)
+    await redis.writeToCache(
+      client,
+      SERVICE_NAME,
+      REQUEST_PATH,
+      JSON.stringify(KEY_VALUE)
+    )
+
+    expect(writeToCacheSpy).toHaveBeenCalled()
+    expect(writeToCacheSpy).toHaveBeenCalledWith(
+      client,
+      SERVICE_NAME,
+      REQUEST_PATH,
+      JSON.stringify(KEY_VALUE)
+    )
   })
 })

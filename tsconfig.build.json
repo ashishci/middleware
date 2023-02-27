@@ -1,4 +1,4 @@
 {
-  "extends": ["./tsconfig", "src/redis-for-cache/types/*.ts"],
+  "extends": "./tsconfig.json",
   "exclude": ["**/*.test.*", "**/__mocks__/*", "**/__tests__/*", "node_modules"]
 }
