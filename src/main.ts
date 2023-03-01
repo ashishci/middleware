@@ -13,7 +13,7 @@ const PORT = 8080
 
 const app = express()
 app.use(redisForCache('middleware'))
-app.use(winstonForLogging)
+app.use(winstonForLogging())
 
 app.get('/', (req, res) => {
   res.status(200).json({ data: 'I am alive' })

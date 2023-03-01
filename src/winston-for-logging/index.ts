@@ -6,8 +6,8 @@ import { loggerConfig } from './config'
 
 /**
  * Resposible for creating logger instance
- * @param options 
- * @returns 
+ * @param options
+ * @returns
  */
 const logger = (options: typeof loggerConfig = loggerConfig) => {
   const { file, console } = options
