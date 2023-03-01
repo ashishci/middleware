@@ -6,14 +6,14 @@ import {
 } from './redis-for-cache'
 
 import express from 'express'
-import winstonForCache from './winston-for-logging'
+import { winstonForLogging } from './winston-for-logging'
 
 const HOST = '0.0.0.0'
 const PORT = 8080
 
 const app = express()
 app.use(redisForCache('middleware'))
-app.use(winstonForCache())
+app.use(winstonForLogging)
 
 app.get('/', (req, res) => {
   res.status(200).json({ data: 'I am alive' })

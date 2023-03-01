@@ -1,4 +1,4 @@
-import { Logger } from 'winston'
+import { Logger, transports } from 'winston'
 
 export interface LoggerPartial {
   info: Logger['info']
