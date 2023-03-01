@@ -3,6 +3,8 @@ import * as redisForCache from '..'
 import { ClientPartial, ConfigType } from '..'
 import { NextFunction, Request, Response } from 'express'
 
+import { LoggerPartial } from '../../shared/interfaces'
+
 const redis = jest.requireActual<typeof redisForCache>('..')
 
 /**
@@ -104,6 +106,15 @@ const clientMock = (
  */
 const generateKeyMock = (name: string, path: string) => KEY
 
+const loggerMock = () => {
+  return {
+    info: jest.fn(),
+    debug: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn()
+  }
+}
+
 /**
  *
  * @param client
@@ -116,9 +127,10 @@ const writeToCacheMock = async (
   client: ClientPartial,
   name: string,
   path: string,
-  value: string
+  value: string,
+  logger: LoggerPartial
 ) => {
-  if (!client || !name || !path || !value) {
+  if (!client || !name || !path || !value || !logger) {
     return Promise.reject<Error>(ERROR_FOR_EMPTY_PARAMETER_VALUE)
   }
 
@@ -181,15 +193,22 @@ const getCacheMock = async (client: ClientPartial, key: string) => {
  * @returns Promise<Error | number>
  */
 const removeFromCacheMock = async (client: ClientPartial, key: string) => {
-  if (!client || !key) {
-    return Promise.reject<Error>(ERROR_FOR_EMPTY_PARAMETER_VALUE)
+  if (!key || !client) {
+    Promise.reject<Error>(ERROR_FOR_EMPTY_PARAMETER_VALUE)
   }
 
-  await client.connect()
-  await client.del(key)
-  await client.disconnect()
+  try {
+    await client.connect()
+    const result = await client.del(key)
+    await client.disconnect()
 
-  return Promise.resolve<number>(1)
+    return result
+  } catch (e) {
+    const message = `Redis error while removing data from cache with ${
+      (e as Error).message
+    }`
+    throw new Error(message)
+  }
 }
 
 /**
@@ -233,19 +252,15 @@ const removeCachedDataMock = async (
   res: Response,
   next: NextFunction
 ) => {
-  try {
-    const path = req.path
-    const { redis, name } = req.redisClient
-    const key = generateKeyMock(name, path)
+  const path = req.path
+  const { redis, name } = req.redisClient
+  const key = generateKeyMock(name, path)
 
-    await removeFromCacheMock(redis, key)
-
+  await removeFromCacheMock(redis, key).catch(() => {
     next()
-  } catch (e) {
-    return res.status(400).json({
-      error: (e as Error).message
-    })
-  }
+  })
+
+  next()
 }
 
 /**
@@ -282,8 +297,8 @@ describe('redis-for-cache middleware testing', () => {
 
     writeToCacheSpy = jest
       .spyOn(redis, 'writeToCache')
-      .mockImplementation((client, name, path, value) =>
-        writeToCacheMock(client, name, path, value)
+      .mockImplementation((client, name, path, value, logger) =>
+        writeToCacheMock(client, name, path, value, logger)
       )
     redisForCacheSpy = jest
       .spyOn(redis, 'redisForCache')
@@ -359,11 +374,13 @@ describe('redis-for-cache middleware testing', () => {
 
   test('test storing data to redis cache', async () => {
     const client = clientMock(SERVICE_NAME, TEST_CONFIG)
+    const logger = loggerMock()
     await redis.writeToCache(
       client,
       SERVICE_NAME,
       REQUEST_PATH,
-      JSON.stringify(KEY_VALUE)
+      JSON.stringify(KEY_VALUE),
+      logger
     )
 
     expect(writeToCacheSpy).toHaveBeenCalled()
@@ -371,7 +388,8 @@ describe('redis-for-cache middleware testing', () => {
       client,
       SERVICE_NAME,
       REQUEST_PATH,
-      JSON.stringify(KEY_VALUE)
+      JSON.stringify(KEY_VALUE),
+      logger
     )
   })
 })

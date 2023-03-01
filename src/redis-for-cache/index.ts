@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from 'express'
 
+import { LoggerPartial } from '../shared/interfaces'
 import config from './config'
 import { createClient } from 'redis'
-import { rejects } from 'assert'
 
 const { host, port, password, ttl } = config
 
@@ -112,8 +112,10 @@ const readFromCache = async (client: ClientPartial, key: string) => {
 
     return cachedData
   } catch (e) {
-    console.log('Redis error while getting cache', (e as Error).message)
-    throw e as Error
+    const message = `Redis error while getting cache with ${
+      (e as Error).message
+    }`
+    throw new Error(message)
   }
 }
 
@@ -133,16 +135,12 @@ const removeFormCache = async (client: ClientPartial, key: string) => {
     const result = await client.del(key)
     await client.disconnect()
 
-    if (result) {
-      console.info(`Removed ${key} from redis`)
-    } else {
-      console.log(`failed to remove ${key} from redis`)
-    }
-
     return result
   } catch (e) {
-    console.log('Redis error while getting cache', (e as Error).message)
-    throw e as Error
+    const message = `Redis error while removing data from cache with ${
+      (e as Error).message
+    }`
+    throw new Error(message)
   }
 }
 
@@ -158,11 +156,14 @@ export const writeToCache = async (
   client: ClientPartial,
   name: string,
   path: string,
-  value: string
+  value: string,
+  logger: LoggerPartial
 ) => {
   if (!name || !path || !value || !client) {
     return new Error(ERROR_FOR_EMPTY_PARAMETER_VALUE)
   }
+
+  let message
 
   try {
     await client.connect()
@@ -172,12 +173,15 @@ export const writeToCache = async (
     await client.disconnect()
 
     if (result) {
-      console.info(`Stored values for ${key} in redis`)
+      message = `Stored values for ${key} in redis`
+      logger.info(message)
     } else {
-      console.info(`Unable to stored values for ${key} in redis`)
+      message = `Unable to stored values for ${key} in redis`
+      logger.info(message)
     }
   } catch (e) {
-    console.log('Redis eror while setting cache', (e as Error).message)
+    message = `Redis eror while setting cache with ${(e as Error).message}`
+    logger.error(message)
     throw e as Error
   }
 }
@@ -194,22 +198,22 @@ export const getCachedData = async (
   res: Response,
   next: NextFunction
 ) => {
-  try {
-    const { name, redis } = req.redisClient
-    const key = generateKey(name, req.path)
+  const { name, redis } = req.redisClient
+  const logger = req.logger
+  const key = generateKey(name, req.path)
 
-    const data = await readFromCache(redis, key)
-    if (data) {
-      return res.status(200).json({
-        fromCache: true,
-        data: data
-      })
-    } else {
-      next()
-    }
-  } catch (e) {
-    return res.status(404).json({ error: (e as Error).message })
+  const data = await readFromCache(redis, key).catch(err => {
+    logger.error(err.message)
+  })
+
+  if (data) {
+    return res.status(200).json({
+      fromCache: true,
+      data: data
+    })
   }
+
+  next()
 }
 /**
  * remove store data by key
@@ -223,16 +227,16 @@ export const removeCachedData = async (
   res: Response,
   next: NextFunction
 ) => {
-  try {
-    const { name, redis } = req.redisClient
-    const key = generateKey(name, req.path)
+  const { name, redis } = req.redisClient
+  const key = generateKey(name, req.path)
+  const logger = req.logger
 
-    await readFromCache(redis, key).catch(() => next)
-
+  await removeFormCache(redis, key).catch(err => {
+    logger.error(err.message)
     next()
-  } catch (e) {
-    return res.status(404).json({ error: (e as Error).message })
-  }
+  })
+
+  next()
 }
 
 /**
