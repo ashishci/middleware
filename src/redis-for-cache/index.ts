@@ -72,6 +72,25 @@ const cacheClient = (
     )
   })
 
+  _client.on('set', () => {
+    console.info(
+      `stored data redis at ${host}:${port} for service: ${serviceName}`
+    )
+  })
+
+  _client.on('get', () => {
+    console.info(
+      `retrieved data from redis at ${host}:${port} for service: ${serviceName}`
+    )
+  })
+
+  _client.on('del', () => {
+    console.info(
+      `removed data from redis at ${host}:${port} for service: ${serviceName}`
+    )
+  })
+
+
   return _client as ClientPartial
 }
 
@@ -112,9 +131,8 @@ const readFromCache = async (client: ClientPartial, key: string) => {
 
     return cachedData
   } catch (e) {
-    const message = `Redis error while getting cache with ${
-      (e as Error).message
-    }`
+    const message = `Redis error while getting cache with ${(e as Error).message
+      }`
     throw new Error(message)
   }
 }
@@ -137,9 +155,8 @@ const removeFormCache = async (client: ClientPartial, key: string) => {
 
     return result
   } catch (e) {
-    const message = `Redis error while removing data from cache with ${
-      (e as Error).message
-    }`
+    const message = `Redis error while removing data from cache with ${(e as Error).message
+      }`
     throw new Error(message)
   }
 }

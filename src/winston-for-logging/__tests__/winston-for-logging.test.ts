@@ -9,6 +9,7 @@ jest.mock('Winston', () => ({
     label: jest.fn(),
     timestamp: jest.fn(),
     simple: jest.fn(),
+    json: jest.fn(),
     printf: jest.fn()
   },
   transports: [{ Console: jest.fn() }, { File: jest.fn() }]

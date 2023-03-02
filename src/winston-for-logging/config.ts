@@ -8,7 +8,7 @@ export const loggerConfig = {
     handleExceptions: true,
     maxsize: 5242880,
     maxFiles: 5,
-    format: format.combine(format.timestamp(), format.simple())
+    format: format.combine(format.timestamp(), format.json())
   },
   console: {
     level: 'debug',

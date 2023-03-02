@@ -12,8 +12,12 @@ const HOST = '0.0.0.0'
 const PORT = 8080
 
 const app = express()
-app.use(cachingService('middleware'))
+app.set('name', 'middleware')
+
+
+app.use(cachingService(app.name))
 app.use(loggingService())
+
 
 app.get('/', (req, res) => {
   res.status(200).json({ data: 'I am alive' })
