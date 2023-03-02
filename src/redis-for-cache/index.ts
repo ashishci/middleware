@@ -245,7 +245,7 @@ export const removeCachedData = async (
  * @param config
  * @returns redis-for-cache middleware client wrapper
  */
-export const redisForCache = (serviceName: string, config?: ConfigType) => {
+export const cachingService = (serviceName: string, config?: ConfigType) => {
   const result = (req: Request, res: Response, next: NextFunction) => {
     if (!req.redisClient) {
       const redisClient: RedisClient = {

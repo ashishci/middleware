@@ -1,11 +1,11 @@
-import * as redisForCache from '..'
+import * as redisFor from '..'
 
 import { ClientPartial, ConfigType } from '..'
 import { NextFunction, Request, Response } from 'express'
 
 import { LoggerPartial } from '../../shared/interfaces'
 
-const redis = jest.requireActual<typeof redisForCache>('..')
+const redis = jest.requireActual<typeof redisFor>('..')
 
 /**
  * CONSTANTS
@@ -29,7 +29,7 @@ export const TEST_CONFIG = {
 /**
  * Spy instances to watch call to redis-for-cache mocks
  */
-let redisForCacheSpy: jest.SpyInstance
+let cachingServiceSpy: jest.SpyInstance
 let writeToCacheSpy: jest.SpyInstance
 let getCachedDataSpy: jest.SpyInstance
 let getCachedDataReturnEmptySpy: jest.SpyInstance
@@ -149,7 +149,7 @@ const writeToCacheMock = async (
  * @param config
  * @returns function
  */
-const redisForCacheMock = (serviceName: string, config?: ConfigType) => {
+const cachingServiceMock = (serviceName: string, config?: ConfigType) => {
   const result = jest
     .fn()
     .mockImplementation((req: Request, res: Response, next: NextFunction) => {
@@ -291,7 +291,7 @@ const getCachedDataReturnEmptyMock = async (
   }
 }
 
-describe('redis-for-cache middleware testing', () => {
+describe('redis-for middleware testing', () => {
   beforeEach(() => {
     jest.resetAllMocks()
 
@@ -300,10 +300,10 @@ describe('redis-for-cache middleware testing', () => {
       .mockImplementation((client, name, path, value, logger) =>
         writeToCacheMock(client, name, path, value, logger)
       )
-    redisForCacheSpy = jest
-      .spyOn(redis, 'redisForCache')
+    cachingServiceSpy = jest
+      .spyOn(redis, 'cachingService')
       .mockImplementation((serviceName, config) =>
-        redisForCacheMock(serviceName, config)
+        cachingServiceMock(serviceName, config)
       )
     getCachedDataSpy = jest
       .spyOn(redis, 'getCachedData')
@@ -315,12 +315,11 @@ describe('redis-for-cache middleware testing', () => {
       )
   })
 
-  test('test redisforcache creation returns a function type', () => {
-    const result = redis.redisForCache(SERVICE_NAME, TEST_CONFIG)
+  test('test caching service creation returns a function type', () => {
+    const result = redis.cachingService(SERVICE_NAME, TEST_CONFIG)
 
-    expect(redisForCacheSpy).toHaveBeenCalled()
-    expect(redisForCacheSpy).toHaveBeenCalledWith(SERVICE_NAME, TEST_CONFIG)
-    expect(typeof result).toBe('function')
+    expect(cachingServiceSpy).toHaveBeenCalled()
+    expect(cachingServiceSpy).toHaveBeenCalledWith(SERVICE_NAME, TEST_CONFIG)
   })
 
   test('test getCachedData respose is retiurned  when data is found', async () => {

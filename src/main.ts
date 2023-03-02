@@ -1,19 +1,19 @@
 import {
+  cachingService,
   getCachedData,
-  redisForCache,
   removeCachedData,
   writeToCache
 } from './redis-for-cache'
 
 import express from 'express'
-import { winstonForLogging } from './winston-for-logging'
+import { loggingService } from './winston-for-logging'
 
 const HOST = '0.0.0.0'
 const PORT = 8080
 
 const app = express()
-app.use(redisForCache('middleware'))
-app.use(winstonForLogging())
+app.use(cachingService('middleware'))
+app.use(loggingService())
 
 app.get('/', (req, res) => {
   res.status(200).json({ data: 'I am alive' })

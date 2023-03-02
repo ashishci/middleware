@@ -27,7 +27,7 @@ const logger = (options: typeof loggerConfig = loggerConfig) => {
  * Attach winston partial logger extended Request property as a middleware
  * @returns
  */
-export const winstonForLogging = () => {
+export const loggingService = () => {
   const result = (req: Request, res: Response, next: NextFunction) => {
     if (!req.logger) {
       req.logger = logger()
