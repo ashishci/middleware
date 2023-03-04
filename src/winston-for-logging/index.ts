@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express'
 import { createLogger, exitOnError, transports } from 'winston'
 
-import { LoggerPartial } from '../shared/interfaces'
+import { LoggerPartial } from 'community-lib/interfaces'
 import { loggerConfig } from './config'
 
 /**

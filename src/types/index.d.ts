@@ -1,5 +1,5 @@
 import { RedisClient } from '../redis-for-cache'
-import { LoggerPartial } from '../shared/interfaces'
+import { LoggerPartial } from 'community-lib/interfaces'
 
 export {}
 declare global {

@@ -3,7 +3,7 @@ import * as redisFor from '..'
 import { ClientPartial, ConfigType } from '..'
 import { NextFunction, Request, Response } from 'express'
 
-import { LoggerPartial } from '../../shared/interfaces'
+import { LoggerPartial } from 'community-lib/interfaces'
 
 const redis = jest.requireActual<typeof redisFor>('..')
 

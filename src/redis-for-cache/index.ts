@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express'
 
-import { LoggerPartial } from '../shared/interfaces'
+import { LoggerPartial } from 'community-lib/interfaces'
 import config from './config'
 import { createClient } from 'redis'
 
